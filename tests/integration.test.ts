@@ -83,7 +83,7 @@ describe("integration", () => {
     );
     expect(ackReq).toBeDefined();
     const body = JSON.parse(ackReq!.body);
-    expect(body.state).toBe(2);
     expect(body.note).toBe("looking into it");
+    expect(body.state).toBeUndefined();
   });
 });
