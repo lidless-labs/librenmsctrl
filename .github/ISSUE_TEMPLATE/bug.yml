@@ -1,0 +1,60 @@
+name: Bug report
+description: Something is broken in librenms-mcp itself, such as a tool, the LibreNMS client, config, the write gate, or docs.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Which tool did you call (or what did you run), and what did you expect versus what you got?
+      placeholder: |
+        I called `librenms_list_devices` and got X.
+        I expected Y.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: librenms-mcp version
+      description: The version you installed (e.g. from `npm ls @solomonneas/librenms-mcp`) or the commit you tested.
+      placeholder: 0.2.0
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node version
+      description: Output of `node --version`.
+      placeholder: v20.11.0
+    validations:
+      required: true
+  - type: input
+    id: client
+    attributes:
+      label: MCP client
+      description: Which client were you running it under?
+      placeholder: Claude Code, Claude Desktop, Codex CLI, OpenClaw, raw stdio, etc.
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: Ubuntu 24.04, macOS 14.5, etc.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Full output
+      description: Paste the full stdout + stderr. Redact your LibreNMS URL, token, and personal paths, but keep enough for us to reproduce.
+      render: shell
+    validations:
+      required: false
+  - type: checkboxes
+    id: scrub
+    attributes:
+      label: Pre-flight
+      options:
+        - label: I have scrubbed my LibreNMS token, private hostnames, real IPs, and personal paths from this report.
+          required: true

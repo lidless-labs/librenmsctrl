@@ -1,0 +1,41 @@
+name: Feature request
+description: Suggest a new tool, a config option, or a capability for librenms-mcp.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe the monitoring or workflow gap, not just the feature. What can you not do today?
+      placeholder: |
+        I want my agent to be able to X against LibreNMS, but there is no tool for it.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed tool or change
+      description: If you have a LibreNMS `/api/v0` endpoint in mind, name it. Note whether it is a read or a write.
+      placeholder: |
+        A read tool that maps to GET /api/v0/...
+    validations:
+      required: false
+  - type: dropdown
+    id: tier
+    attributes:
+      label: Write tier
+      description: See the Safety section of the README. Writes need a conversation first per CONTRIBUTING.md.
+      options:
+        - "Read only (open, no confirm)"
+        - "Safe write (tier 2, requires confirm: true)"
+        - "Destructive (tier 3, deferred in v1)"
+        - "Not sure"
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Have you tried doing this with existing read tools or directly against the LibreNMS API?
+    validations:
+      required: false

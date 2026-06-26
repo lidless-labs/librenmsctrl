@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Website and tool catalog
+    url: https://lidless.dev/librenms-mcp
+    about: Overview, capabilities, and the rest of the Lidless Labs MCP server catalog.
+  - name: Security report
+    url: https://github.com/lidless-labs/librenms-mcp/security/policy
+    about: Do not file security issues publicly. See SECURITY.md.
+  - name: LibreNMS itself
+    url: https://github.com/librenms/librenms
+    about: Bugs in LibreNMS or its API belong upstream, not here.

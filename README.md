@@ -1,47 +1,89 @@
-# librenms-mcp
+<h1 align="center">librenms-mcp</h1>
 
-MCP server exposing LibreNMS read + safe-write tools via API token auth. Three-tier write gating: reads are open, writes require `confirm: true`, destructive ops would require `confirm: true` + `destructive: true` (v1 ships tier 1 + tier 2 only; tier 3 destructive ops are deferred).
+<p align="center">
+  <strong>An MCP server that reads your LibreNMS network monitoring from an AI client: devices, ports, port health, alerts, and the event log over API-token auth, with writes gated behind an explicit confirm flag.</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/npm/v/@solomonneas/librenms-mcp?style=for-the-badge&label=npm" alt="npm version">
+  <img src="https://img.shields.io/badge/status-WIP-orange?style=for-the-badge" alt="Status: work in progress">
+  <img src="https://img.shields.io/badge/MCP-server-5a45ff?style=for-the-badge" alt="Model Context Protocol server">
+  <img src="https://img.shields.io/badge/node-%3E%3D20-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node 20+">
+  <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="MIT license">
+</p>
+
+<p align="center">
+  <a href="https://lidless.dev/librenms-mcp"><strong>Website &rarr; lidless.dev/librenms-mcp</strong></a>
+</p>
+
+librenms-mcp is a [Model Context Protocol](https://modelcontextprotocol.io) server for [LibreNMS](https://www.librenms.org/), the open-source network monitoring system. It lets an AI client read your monitored network surface, devices, ports, alerts, and events, over LibreNMS API-token auth, and acknowledge or mute alerts only when you pass an explicit `confirm: true`. It differs from pointing an agent at the raw LibreNMS REST API in one way that matters: every write is gated, every argument is schema-validated before it leaves the host, and your token is redacted from all output, so a hallucinated tool call cannot change your monitoring state by accident.
+
+> **Status: work in progress.** v1 ships read tools (tier 1) and confirm-gated safe writes (tier 2) only. Destructive operations (tier 3) such as device deletion, alert-rule removal, and bulk port resets are intentionally deferred until the write-gate pattern has more field time. Treat it as early but usable; the read path and the two write gates are tested.
+
+## What it does
+
+librenms-mcp turns a [LibreNMS](https://www.librenms.org/) instance into a set of Model Context Protocol tools so an AI agent can do network monitoring and observability work in plain language: list the devices LibreNMS is polling over SNMP, pull a single device or port, check port health and utilization, read current alerts and alert history, and tail the event log. It authenticates with a LibreNMS API token, talks to the LibreNMS `/api/v0` REST API under the hood, and exposes the results as structured tool output an agent can reason over.
+
+Writes are gated in three tiers:
+
+- **Tier 1 (reads)**: open. No confirm flag. Status, device and port listings, single device or port, port health, alert listings, alert history, event log.
+- **Tier 2 (safe writes)**: require an explicit `confirm: true` argument, documented on every write tool's JSON schema. Acknowledge an alert, unmute an alert, or put a device into a maintenance window. A tool call missing the flag throws `WriteGateError` before any HTTP traffic leaves the host.
+- **Tier 3 (destructive)**: not implemented in v1. When added, ops like device deletion and alert-rule removal will additionally require `destructive: true`. The model cannot bypass either gate from a hallucinated call.
+
+Every tool call is validated against its published TypeBox `inputSchema` before the tool runs. Ids, port ids, device ids, limits, and the `type`/`state` filters are bounds- and enum-checked, so a malformed or injection-style argument is rejected up front and never reaches a LibreNMS URL path or query string. Interpolated path and query values are additionally URL-encoded as defense-in-depth. The API token is registered with the redactor on startup and masked from all log and error output.
 
 ## Tools
 
-**Reads (10):** `librenms_status`, `librenms_list_devices`, `librenms_get_device`, `librenms_list_ports`, `librenms_get_port`, `librenms_port_health`, `librenms_list_alerts`, `librenms_get_alert`, `librenms_alert_history`, `librenms_event_log`.
+13 tools: 10 reads, 3 confirm-gated safe writes. This list is generated from the server's tool registration in [`mcp-server.ts`](mcp-server.ts).
 
-**Safe writes (3, require `confirm: true`):** `librenms_ack_alert`, `librenms_unmute_alert`, `librenms_set_maintenance`.
+**Reads (10, open):**
 
-**Destructive (tier 3):** not in v1. Operations like device deletion, alert rule removal, and bulk port resets are intentionally absent until the gate pattern has more field time.
+| Tool | What it does |
+|---|---|
+| `librenms_status` | LibreNMS instance status check. |
+| `librenms_list_devices` | List monitored devices. |
+| `librenms_get_device` | Fetch a single device by id. |
+| `librenms_list_ports` | List ports across devices. |
+| `librenms_get_port` | Fetch a single port detail. |
+| `librenms_port_health` | Port health and utilization view. |
+| `librenms_list_alerts` | List current alerts. |
+| `librenms_get_alert` | Fetch a single alert by id. |
+| `librenms_alert_history` | Historical alert records. |
+| `librenms_event_log` | Read the device event log. |
 
-## Configuration
+**Safe writes (3, require `confirm: true`):**
 
-Set the following env vars. Both credential vars are required.
+| Tool | What it does |
+|---|---|
+| `librenms_ack_alert` | Acknowledge an active alert by id. |
+| `librenms_unmute_alert` | Unmute a previously muted alert. |
+| `librenms_set_maintenance` | Put a device into a maintenance window. |
 
-```
-LIBRENMS_URL=https://librenms.example.local
-LIBRENMS_TOKEN=<your-api-token>
+## Quickstart
 
-# Optional: skip TLS cert validation (homelab self-signed certs).
-# Accepts true/1/yes (case-insensitive). Defaults to false.
-LIBRENMS_TLS_INSECURE=false
-```
+Published to npm as [`@solomonneas/librenms-mcp`](https://www.npmjs.com/package/@solomonneas/librenms-mcp). Run it on demand with `npx`, or install the global binary.
 
-Trailing slashes on `LIBRENMS_URL` are stripped. The API token is registered with the redactor on startup and masked from all log + error output.
+```bash
+# run on demand
+npx -y @solomonneas/librenms-mcp
 
-## Install
-
-```
+# or install the global `librenms-mcp` binary
 npm install -g @solomonneas/librenms-mcp
 ```
 
-Or run via npx:
+It needs Node 20+ and two env vars, `LIBRENMS_URL` and `LIBRENMS_TOKEN`. The server speaks stdio, so a quick way to confirm it starts is to feed it an MCP `tools/list` request:
 
+```bash
+export LIBRENMS_URL=https://librenms.example.local
+export LIBRENMS_TOKEN=<your-api-token>
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | npx -y @solomonneas/librenms-mcp
 ```
-npx -y @solomonneas/librenms-mcp
-```
 
-## Setup
+You should get back a JSON listing of the 13 tools above. In normal use you point an MCP client at the same command instead.
 
-### Claude Desktop
+## MCP client config
 
-`~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
+Copy-paste this into your MCP client. It is the canonical `mcpServers` shape used by Claude Desktop and Claude Code; both `LIBRENMS_URL` and `LIBRENMS_TOKEN` are required.
 
 ```json
 {
@@ -65,41 +107,11 @@ npx -y @solomonneas/librenms-mcp
 claude mcp add librenms -s user -- npx -y @solomonneas/librenms-mcp
 ```
 
-Then export env vars in your shell (`~/.bashrc`, `~/.zshrc`) or pass `--env` flags.
+Then export `LIBRENMS_URL` and `LIBRENMS_TOKEN` in your shell (`~/.bashrc`, `~/.zshrc`) or pass `--env` flags on the `claude mcp add` line.
 
-### OpenClaw
+### Claude Desktop
 
-Plugin loads automatically once installed. Config goes in your `~/.openclaw/openclaw.json` `plugins.entries.librenms` (or use the bundled `openclaw.plugin.json`):
-
-```json
-{
-  "plugins": {
-    "entries": {
-      "librenms": {
-        "package": "@solomonneas/librenms-mcp",
-        "activation": { "onStartup": true }
-      }
-    }
-  }
-}
-```
-
-Env vars from `~/.openclaw/workspace/.env` are inherited by the plugin.
-
-### Hermes Agent
-
-Add to `~/.config/hermes/agents.yaml`:
-
-```yaml
-mcp_servers:
-  librenms:
-    command: npx
-    args: ["-y", "@solomonneas/librenms-mcp"]
-    env:
-      LIBRENMS_URL: https://librenms.example.local
-      LIBRENMS_TOKEN: <your-api-token>
-      LIBRENMS_TLS_INSECURE: "false"
-```
+Add the `mcpServers` block above to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows).
 
 ### Codex CLI
 
@@ -116,20 +128,71 @@ LIBRENMS_TOKEN = "<your-api-token>"
 LIBRENMS_TLS_INSECURE = "false"
 ```
 
+### OpenClaw
+
+The plugin loads automatically once installed. Config goes in your `~/.openclaw/openclaw.json` under `plugins.entries.librenms` (or use the bundled `openclaw.plugin.json`):
+
+```json
+{
+  "plugins": {
+    "entries": {
+      "librenms": {
+        "package": "@solomonneas/librenms-mcp",
+        "activation": { "onStartup": true }
+      }
+    }
+  }
+}
+```
+
+Env vars from `~/.openclaw/workspace/.env` are inherited by the plugin.
+
+## Configuration
+
+Set the following env vars. Both credential vars are required.
+
+| Variable | Required | Default | Notes |
+|---|---|---|---|
+| `LIBRENMS_URL` | yes | - | Base URL of your LibreNMS instance. Trailing slashes are stripped. |
+| `LIBRENMS_TOKEN` | yes | - | LibreNMS API token. Registered with the redactor on startup and masked from all output. |
+| `LIBRENMS_TLS_INSECURE` | no | `false` | Skip TLS cert validation for homelab self-signed certs. Accepts `true`/`1`/`yes`, case-insensitive. |
+
 ## Safety
 
-This MCP uses the same three-tier write-gating pattern as the rest of the `solomonneas/*-mcp` family:
+This MCP uses a three-tier write-gating pattern:
 
-- **Tier 1 (reads):** open. No confirm flag needed. Status, device + port listings, single-port detail, port health, alert listings, alert history, event log.
-- **Tier 2 (safe writes):** require an explicit `confirm: true` arg. The JSON schema documents this on every write tool. Alert acknowledge/unmute and entering device maintenance live here. A hallucinated tool call without the confirm flag throws `WriteGateError` before any HTTP traffic.
-- **Tier 3 (destructive):** not implemented in v1. When added, ops like device deletion, alert rule removal, and bulk port resets will additionally require `destructive: true`. The model cannot bypass either gate from a hallucinated call.
+- **Tier 1 (reads):** open. No confirm flag needed.
+- **Tier 2 (safe writes):** require an explicit `confirm: true` arg. The JSON schema documents this on every write tool. A tool call without the confirm flag throws `WriteGateError` before any HTTP traffic.
+- **Tier 3 (destructive):** not implemented in v1. When added, ops like device deletion, alert-rule removal, and bulk port resets will additionally require `destructive: true`.
 
-**Input validation:** every tool call is validated against its published TypeBox `inputSchema` before the tool runs. Ids, port ids, device ids, limits, and the `type`/`state` filters are bounds- and enum-checked, so a malformed or injection-style argument (e.g. a non-integer id, an off-enum filter, or an unexpected extra field) is rejected up front and never reaches a LibreNMS URL path or query string. Interpolated path/query values are additionally URL-encoded as defense-in-depth.
+**Input validation:** every tool call is validated against its published TypeBox `inputSchema` before the tool runs. Ids, port ids, device ids, limits, and the `type`/`state` filters are bounds- and enum-checked, so a malformed or injection-style argument (a non-integer id, an off-enum filter, an unexpected extra field) is rejected up front and never reaches a LibreNMS URL path or query string. Interpolated path and query values are additionally URL-encoded as defense-in-depth.
 
-**API token scope recommendation:** start with a "Read Only" token role in LibreNMS (Settings > API > New API Token > Read Only) and verify the read tools work end-to-end. Grade up to "Normal User" or "Global Read/Write" only after you've confirmed the redactor is masking your token in your transcripts and that the model is honoring the confirm gate. Tokens can be revoked instantly from the same Settings > API screen.
+**API token scope:** start with a "Read Only" token role in LibreNMS (Settings > API > New API Token > Read Only) and verify the read tools work end-to-end. Grade up to "Normal User" or "Global Read/Write" only after you have confirmed the redactor is masking your token in your transcripts and that the model is honoring the confirm gate. Tokens can be revoked instantly from the same Settings > API screen.
 
-The `LIBRENMS_TLS_INSECURE=true` toggle exists for homelab self-signed certs. Leave it `false` in any environment with a real CA-signed cert.
+**TLS:** the `LIBRENMS_TLS_INSECURE=true` toggle exists for homelab self-signed certs. Leave it `false` in any environment with a real CA-signed cert.
+
+See [SECURITY.md](SECURITY.md) for the vulnerability-reporting policy.
+
+## Why not just point an agent at the LibreNMS API?
+
+You can hand an agent a generic HTTP tool and the LibreNMS API token, and for read-only exploration that works. The difference shows up the moment a write is possible:
+
+- **No write gate.** A generic HTTP tool will happily `PUT` or `DELETE` whatever the model decides to send. librenms-mcp refuses every write unless the call carries `confirm: true`, and refuses destructive shapes entirely in v1.
+- **No input validation.** A raw API tool passes whatever the model produced straight into a URL. librenms-mcp bounds- and enum-checks every argument against a published schema and URL-encodes interpolated values before any request is built.
+- **Token leakage.** A generic tool echoes request and response detail, including your token, into the transcript. librenms-mcp registers the token with a redactor on startup and masks it from all log and error output.
+- **Shaped tools beat one giant endpoint.** Thirteen named, described tools give the model a far better surface to reason over than one `call this REST API` tool with a free-form path argument.
+
+## What librenms-mcp is not
+
+- It is not a LibreNMS replacement or a poller. It reads an existing LibreNMS instance over the API; it does not collect SNMP itself.
+- It is not a dashboard. Output is structured tool data for an agent, not a UI. For a NOC dashboard view, see [watchtower](https://github.com/solomonneas/watchtower).
+- It does not delete devices, remove alert rules, or do bulk port resets. Tier-3 destructive operations are deliberately absent in v1.
+- It is not a hosted service. It runs locally over stdio, talks only to the LibreNMS URL you configure, and starts no daemon.
+
+## Contributing
+
+Patches welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for what lands easily, [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and the issue and PR templates under [.github/](.github). All public output should be scrubbed of personal hostnames, tokens, and real IPs.
 
 ## License
 
-MIT
+[MIT](LICENSE).
