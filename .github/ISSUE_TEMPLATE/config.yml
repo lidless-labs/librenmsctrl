@@ -4,7 +4,7 @@ contact_links:
     url: https://lidless.dev/librenms-mcp
     about: Overview, capabilities, and the rest of the Lidless Labs MCP server catalog.
   - name: Security report
-    url: https://github.com/lidless-labs/librenmsctl/security/policy
+    url: https://github.com/lidless-labs/librenmsctrl/security/policy
     about: Do not file security issues publicly. See SECURITY.md.
   - name: LibreNMS itself
     url: https://github.com/librenms/librenms

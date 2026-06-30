@@ -25,8 +25,8 @@ librenms-mcp is an MCP server that exposes [LibreNMS](https://www.librenms.org/)
 ## Local dev
 
 ```bash
-git clone https://github.com/lidless-labs/librenmsctl.git
-cd librenmsctl
+git clone https://github.com/lidless-labs/librenmsctrl.git
+cd librenmsctrl
 npm install
 npm run typecheck
 npm test

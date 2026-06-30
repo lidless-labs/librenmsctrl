@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="docs/assets/librenmsctl-banner.jpg" alt="librenmsctl banner" width="900">
+  <img src="docs/assets/librenmsctrl-banner.jpg" alt="librenmsctrl banner" width="900">
 </p>
 
-<h1 align="center">librenmsctl</h1>
+<h1 align="center">librenmsctrl</h1>
 
 <p align="center">
   <strong>An operator control CLI for LibreNMS: inspect devices, ports, port health, alerts, and events over API-token auth, with an MCP adapter for agent workflows.</strong>
@@ -14,20 +14,20 @@
 
 <p align="center">
   <img src="https://img.shields.io/npm/v/@solomonneas/librenms-mcp?style=for-the-badge&logo=npm&label=npm" alt="npm version">
-  <img src="https://img.shields.io/badge/ctl-CLI-2563EB?style=for-the-badge" alt="control CLI">
+  <img src="https://img.shields.io/badge/ctrl-CLI-2563EB?style=for-the-badge" alt="control CLI">
   <img src="https://img.shields.io/badge/MCP-compatible-8A2BE2?style=for-the-badge" alt="MCP compatible">
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="MIT license">
 </p>
 
-librenmsctl is a local operator control CLI for [LibreNMS](https://www.librenms.org/), the open-source network monitoring system. It gives shells, cron, and CI a typed command surface for reading your monitored network: devices, ports, port health, alerts, alert history, and the event log over LibreNMS API-token auth.
+librenmsctrl is a local operator control CLI for [LibreNMS](https://www.librenms.org/), the open-source network monitoring system. It gives shells, cron, and CI a typed command surface for reading your monitored network: devices, ports, port health, alerts, alert history, and the event log over LibreNMS API-token auth.
 
-The same package remains MCP-compatible for agent workflows. `librenmsctl mcp` starts the stdio [Model Context Protocol](https://modelcontextprotocol.io) adapter, and the existing `librenms-mcp` binary continues to work for launchers and configs that already use it. The MCP adapter can acknowledge or mute alerts only when you pass an explicit `confirm: true`. It differs from pointing an agent at the raw LibreNMS REST API in one way that matters: every write is gated, every argument is schema-validated before it leaves the host, and your token is redacted from all output, so a hallucinated tool call cannot change your monitoring state by accident.
+The same package remains MCP-compatible for agent workflows. `librenmsctrl mcp` starts the stdio [Model Context Protocol](https://modelcontextprotocol.io) adapter, and the existing `librenms-mcp` binary continues to work for launchers and configs that already use it. The MCP adapter can acknowledge or mute alerts only when you pass an explicit `confirm: true`. It differs from pointing an agent at the raw LibreNMS REST API in one way that matters: every write is gated, every argument is schema-validated before it leaves the host, and your token is redacted from all output, so a hallucinated tool call cannot change your monitoring state by accident.
 
 > **Status: work in progress.** v1 ships read tools (tier 1) and confirm-gated safe writes (tier 2) only. Destructive operations (tier 3) such as device deletion, alert-rule removal, and bulk port resets are intentionally deferred until the write-gate pattern has more field time. Treat it as early but usable; the read path and the two write gates are tested.
 
 ## What it does
 
-librenmsctl turns a [LibreNMS](https://www.librenms.org/) instance into a scriptable control surface for network monitoring and observability work: list the devices LibreNMS is polling over SNMP, pull a single device or port, check port health and utilization, read current alerts and alert history, and tail the event log. It authenticates with a LibreNMS API token, talks to the LibreNMS `/api/v0` REST API under the hood, and can emit human-readable tables or raw JSON for piping.
+librenmsctrl turns a [LibreNMS](https://www.librenms.org/) instance into a scriptable control surface for network monitoring and observability work: list the devices LibreNMS is polling over SNMP, pull a single device or port, check port health and utilization, read current alerts and alert history, and tail the event log. It authenticates with a LibreNMS API token, talks to the LibreNMS `/api/v0` REST API under the hood, and can emit human-readable tables or raw JSON for piping.
 
 For MCP clients, the `mcp` subcommand exposes the same LibreNMS client core as structured tool output an agent can reason over. The package name is still `@solomonneas/librenms-mcp`, and the back-compat `librenms-mcp` bin is intentionally kept stable.
 
@@ -41,13 +41,13 @@ Every tool call is validated against its published TypeBox `inputSchema` before 
 
 ## Quickstart
 
-Published to npm as [`@solomonneas/librenms-mcp`](https://www.npmjs.com/package/@solomonneas/librenms-mcp). Install the package to get the `librenmsctl` operator CLI and the back-compat `librenms-mcp` MCP launcher.
+Published to npm as [`@solomonneas/librenms-mcp`](https://www.npmjs.com/package/@solomonneas/librenms-mcp). Install the package to get the `librenmsctrl` operator CLI and the back-compat `librenms-mcp` MCP launcher.
 
 ```bash
 # start the MCP adapter on demand through the back-compat `librenms-mcp` bin
 npx -y @solomonneas/librenms-mcp
 
-# install the global `librenmsctl` and `librenms-mcp` binaries
+# install the global `librenmsctrl` and `librenms-mcp` binaries
 npm install -g @solomonneas/librenms-mcp
 ```
 
@@ -57,9 +57,9 @@ It needs Node 20+ and two env vars, `LIBRENMS_URL` and `LIBRENMS_TOKEN`.
 export LIBRENMS_URL=https://librenms.example.local
 export LIBRENMS_TOKEN=<your-api-token>
 
-librenmsctl status
-librenmsctl alerts list --state 1
-librenmsctl --json ports health --metric errors_in --limit 10
+librenmsctrl status
+librenmsctrl alerts list --state 1
+librenmsctrl --json ports health --metric errors_in --limit 10
 ```
 
 The MCP adapter speaks stdio. A quick way to confirm it starts is to feed it an MCP `tools/list` request:
@@ -111,28 +111,28 @@ Set the following env vars. Both credential vars are required.
 
 ## CLI
 
-`librenmsctl` is the read-only operator **control CLI** for shells, cron, and CI. It shares the LibreNMS client core with the MCP adapter and talks to the same `/api/v0` API over token auth. It exposes only the read tools (tier 1); the confirm-gated writes (`ack`, `set_maintenance`, `unmute`) are intentionally not surfaced in the CLI.
+`librenmsctrl` is the read-only operator **control CLI** for shells, cron, and CI. It shares the LibreNMS client core with the MCP adapter and talks to the same `/api/v0` API over token auth. It exposes only the read tools (tier 1); the confirm-gated writes (`ack`, `set_maintenance`, `unmute`) are intentionally not surfaced in the CLI.
 
 ```bash
-# installed globally as `librenmsctl`, or via `npx -p @solomonneas/librenms-mcp librenmsctl ...`
-librenmsctl status                       # instance health (exit 1 if no system data)
-librenmsctl devices list --type down
-librenmsctl devices get core-sw1
-librenmsctl ports list core-sw1
-librenmsctl ports get 42
-librenmsctl ports health --metric errors_in --limit 10
-librenmsctl alerts list --state 1        # 0=ok, 1=active, 2=ack
-librenmsctl alerts get 7
-librenmsctl alerts history --device-id 3 --limit 25
-librenmsctl events list --limit 50
-librenmsctl --json status                # raw JSON for piping
+# installed globally as `librenmsctrl`, or via `npx -p @solomonneas/librenms-mcp librenmsctrl ...`
+librenmsctrl status                       # instance health (exit 1 if no system data)
+librenmsctrl devices list --type down
+librenmsctrl devices get core-sw1
+librenmsctrl ports list core-sw1
+librenmsctrl ports get 42
+librenmsctrl ports health --metric errors_in --limit 10
+librenmsctrl alerts list --state 1        # 0=ok, 1=active, 2=ack
+librenmsctrl alerts get 7
+librenmsctrl alerts history --device-id 3 --limit 25
+librenmsctrl events list --limit 50
+librenmsctrl --json status                # raw JSON for piping
 ```
 
-Run `librenmsctl help` for the full flag list. It reads the same `LIBRENMS_URL`, `LIBRENMS_TOKEN`, and `LIBRENMS_TLS_INSECURE` env vars as the server. Exit codes: `0` success, `1` runtime error (LibreNMS unreachable, call failed, or `status` with no system data), `2` usage error (unknown command/flag or bad value).
+Run `librenmsctrl help` for the full flag list. It reads the same `LIBRENMS_URL`, `LIBRENMS_TOKEN`, and `LIBRENMS_TLS_INSECURE` env vars as the server. Exit codes: `0` success, `1` runtime error (LibreNMS unreachable, call failed, or `status` with no system data), `2` usage error (unknown command/flag or bad value).
 
 ### Starting the MCP server
 
-`librenmsctl mcp` (or the back-compat `librenms-mcp` bin) starts the stdio MCP server. If a launcher referenced the file path `dist/mcp-server.js` directly, point it at `dist/mcp-bin.js` (or `dist/cli.js mcp`); launchers that use the `librenms-mcp` bin name need no change.
+`librenmsctrl mcp` (or the back-compat `librenms-mcp` bin) starts the stdio MCP server. If a launcher referenced the file path `dist/mcp-server.js` directly, point it at `dist/mcp-bin.js` (or `dist/cli.js mcp`); launchers that use the `librenms-mcp` bin name need no change.
 
 ## MCP client config
 

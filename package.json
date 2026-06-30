@@ -1,10 +1,10 @@
 {
   "name": "@solomonneas/librenms-mcp",
   "version": "0.2.0",
-  "description": "librenmsctl operator CLI for LibreNMS with an MCP-compatible adapter",
+  "description": "librenmsctrl operator CLI for LibreNMS with an MCP-compatible adapter",
   "keywords": [
     "librenms",
-    "librenmsctl",
+    "librenmsctrl",
     "network-monitoring",
     "observability",
     "mcp",
@@ -23,6 +23,7 @@
     }
   },
   "bin": {
+    "librenmsctrl": "./dist/cli.js",
     "librenmsctl": "./dist/cli.js",
     "librenms-mcp": "./dist/mcp-bin.js"
   },
@@ -53,5 +54,5 @@
   },
   "engines": { "node": ">=20" },
   "license": "MIT",
-  "repository": { "type": "git", "url": "https://github.com/lidless-labs/librenmsctl" }
+  "repository": { "type": "git", "url": "https://github.com/lidless-labs/librenmsctrl" }
 }

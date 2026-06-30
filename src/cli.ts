@@ -29,10 +29,10 @@ export type Parsed =
   | { kind: "alerts-history"; json: boolean; deviceId: number | undefined; limit: number }
   | { kind: "events-list"; json: boolean; deviceId: number | undefined; limit: number };
 
-export const HELP = `librenmsctl - read-only operator CLI for a LibreNMS instance
+export const HELP = `librenmsctrl - read-only operator CLI for a LibreNMS instance
 
 Usage:
-  librenmsctl <command> [subcommand] [args] [options]
+  librenmsctrl <command> [subcommand] [args] [options]
 
 Commands:
   status                       LibreNMS system health (version, totals, last poll)
