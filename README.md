@@ -13,10 +13,10 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/npm/v/@solomonneas/librenms-mcp?style=for-the-badge&logo=npm&label=npm" alt="npm version">
-  <img src="https://img.shields.io/badge/ctrl-CLI-2563EB?style=for-the-badge" alt="control CLI">
-  <img src="https://img.shields.io/badge/MCP-compatible-8A2BE2?style=for-the-badge" alt="MCP compatible">
-  <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="MIT license">
+  <img src="https://shieldcn.dev/npm/@solomonneas/librenms-mcp.svg" alt="npm version">
+  <img src="https://shieldcn.dev/badge/ctrl-CLI-2563EB.svg" alt="control CLI">
+  <img src="https://shieldcn.dev/badge/MCP-compatible-8A2BE2.svg" alt="MCP compatible">
+  <img src="https://shieldcn.dev/badge/license-MIT-green.svg" alt="MIT license">
 </p>
 
 librenmsctrl is a local operator control CLI for [LibreNMS](https://www.librenms.org/), the open-source network monitoring system. It gives shells, cron, and CI a typed command surface for reading your monitored network: devices, ports, port health, alerts, alert history, and the event log over LibreNMS API-token auth.
