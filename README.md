@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/librenmsctrl-banner.jpg" alt="librenmsctrl banner" width="900">
+  <img src="docs/assets/librenmsctrl-social-preview.jpg" alt="librenmsctrl banner" width="900">
 </p>
 
 <h1 align="center">librenmsctrl</h1>
