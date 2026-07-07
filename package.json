@@ -1,6 +1,6 @@
 {
   "name": "@solomonneas/librenms-mcp",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "librenmsctrl operator CLI for LibreNMS with an MCP-compatible adapter",
   "keywords": [
     "librenms",
@@ -25,9 +25,9 @@
     }
   },
   "bin": {
-    "librenmsctrl": "./dist/cli.js",
-    "librenmsctl": "./dist/cli.js",
-    "librenms-mcp": "./dist/mcp-bin.js"
+    "librenmsctrl": "dist/cli.js",
+    "librenmsctl": "dist/cli.js",
+    "librenms-mcp": "dist/mcp-bin.js"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -71,7 +71,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/lidless-labs/librenmsctrl"
+    "url": "git+https://github.com/lidless-labs/librenmsctrl.git"
   },
   "packageManager": "npm@10.9.7",
   "publishConfig": {
