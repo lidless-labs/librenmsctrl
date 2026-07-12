@@ -1,4 +1,4 @@
-import { fail, ok, refuseUnconfirmed } from "@lidless-labs/effect-operator-kit";
+import { ok } from "@lidless-labs/effect-operator-kit";
 import type { LibreNmsClient } from "../librenms-client.ts";
 
 export type ClientFactory = () => LibreNmsClient;
@@ -16,21 +16,9 @@ export function jsonToolResult(payload: unknown) {
 }
 
 /**
- * Error tool result. Delegates to kit `fail` for the error path, then rebuilds
- * the envelope to match repo contracts used by MCP boundaries / golden-write.
- *
- * Semantic wraps vs kit `fail`:
- * - kit pretty-prints content (`null, 2`); repo uses compact `JSON.stringify({ error })`
- * - kit may set `details`; repo errors omit `details`
- * - single layer only: plain message → one `{ error: message }` blob + `isError`
+ * Error tool result matching repo contracts used by MCP boundaries / golden-write.
  */
 export function toolFail(message: string) {
-  // Call kit fail for the shared error path; rebuild compact content without details.
-  const r = fail(message);
-  if (!r.isError) {
-    // kit always sets isError; guard keeps the wrap honest if kit changes
-    throw new Error("effect-operator-kit fail() returned non-error result");
-  }
   return {
     content: [
       {
@@ -44,18 +32,8 @@ export function toolFail(message: string) {
 
 /**
  * Write-gate refusal as an MCP error envelope.
- *
- * Semantic wrap vs kit `refuseUnconfirmed`:
- * - kit message: `Refusing to ${operation} without explicit confirmation…`
- * - repo message: `${toolName} is a write operation. Pass {"confirm": true} to proceed.`
- * - kit uses pretty-printed fail content; repo uses compact JSON
- *
- * Note: call sites currently throw `WriteGateError` and let the boundary map
- * to this shape; this helper is for boundary/D reuse without changing that flow.
  */
 export function toolRefuseUnconfirmed(toolName: string) {
-  // Exercise kit primitive (isError path); discard incompatible message/formatting.
-  const kit = refuseUnconfirmed(toolName);
   const message = `${toolName} is a write operation. Pass {"confirm": true} to proceed.`;
   return {
     content: [
@@ -64,7 +42,7 @@ export function toolRefuseUnconfirmed(toolName: string) {
         text: JSON.stringify({ error: message }),
       },
     ],
-    isError: (kit.isError ?? true) as true,
+    isError: true as const,
   };
 }
 

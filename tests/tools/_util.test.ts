@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { safeInt } from "../../src/tools/_util.ts";
+import { safeInt, toolFail, toolRefuseUnconfirmed } from "../../src/tools/_util.ts";
 
 describe("safeInt", () => {
   it("returns a valid positive integer unchanged", () => {
@@ -29,5 +29,28 @@ describe("safeInt", () => {
   it("rejects NaN and non-numeric input", () => {
     expect(() => safeInt("abc", "id")).toThrow(/integer/);
     expect(() => safeInt(undefined, "id")).toThrow(/integer/);
+  });
+});
+
+describe("tool result helpers", () => {
+  it("builds the repo-owned compact error envelope", () => {
+    expect(toolFail("bad input")).toEqual({
+      content: [{ type: "text", text: JSON.stringify({ error: "bad input" }) }],
+      isError: true,
+    });
+  });
+
+  it("builds the repo-owned compact write-refusal envelope", () => {
+    expect(toolRefuseUnconfirmed("librenms_ack_alert")).toEqual({
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            error: 'librenms_ack_alert is a write operation. Pass {"confirm": true} to proceed.',
+          }),
+        },
+      ],
+      isError: true,
+    });
   });
 });
