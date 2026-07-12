@@ -1,8 +1,8 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import { operatorErrorMessage } from "@lidless-labs/effect-operator-kit";
 import { resolveConfig, type LibreNmsConfig } from "./src/config.ts";
+import { boundaryErrorMessage } from "./src/error-message.ts";
 import { LibreNmsClient } from "./src/librenms-client.ts";
 import { registerSecret, redact } from "./src/security.ts";
 import { validateToolArgs } from "./src/validate.ts";
@@ -48,13 +48,16 @@ export function createServer(): Server {
       validateToolArgs(t.parameters, t.name, args);
       return await t.execute(req.params.name, args);
     } catch (e) {
-      // Kit mcp adapter message extraction with repo-owned redact (not kit defaultRedact).
-      const msg = redact(operatorErrorMessage(e)) as string;
-      return { content: [{ type: "text", text: JSON.stringify({ error: msg }) }], isError: true };
+      return mcpErrorResult(e);
     }
   });
 
   return server;
+}
+
+export function mcpErrorResult(error: unknown) {
+  const msg = redact(boundaryErrorMessage(error)) as string;
+  return { content: [{ type: "text" as const, text: JSON.stringify({ error: msg }) }], isError: true as const };
 }
 
 export async function serve(): Promise<void> {

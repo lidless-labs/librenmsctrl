@@ -1,8 +1,8 @@
 import { Effect } from "effect";
 import { Agent as UndiciAgent } from "undici";
 import {
-  buildUrl,
   exponentialRetry,
+  ParseError,
   sendRequest,
   TransportError,
   UnexpectedStatusError,
@@ -13,6 +13,7 @@ import {
   type HttpRequest,
   type OperatorError,
 } from "@lidless-labs/effect-operator-kit";
+import { boundaryErrorMessage } from "./error-message.ts";
 
 export interface LibreNmsClientOptions {
   retryDelayMs?: number;
@@ -71,7 +72,6 @@ export class LibreNmsClient {
   private async request<T>(method: HttpMethod, path: string, body?: unknown): Promise<T> {
     const baseUrl = new URL(`${this.cfg.url}/`);
     const requestPath = `api/v0${path}`;
-    buildUrl(baseUrl, requestPath);
 
     const auth: AuthStrategy = {
       apply: (headers) => {
@@ -100,21 +100,26 @@ export class LibreNmsClient {
       fetch: this.fetchWithDispatcher,
       redact: (value) => value,
     };
-    const result = await Effect.runPromise(
-      Effect.either(
-        withRetry(
-          sendRequest<T>(ctx, req),
-          exponentialRetry({
-            maxAttempts: 2,
-            initialDelayMs: this.retryDelayMs,
-            maxDelayMs: this.retryDelayMs,
-            factor: 1,
-            jitter: false,
-            shouldRetry: shouldRetryLibreNmsRequest,
-          }),
+    let result: { _tag: "Left"; left: OperatorError } | { _tag: "Right"; right: { body: T } };
+    try {
+      result = await Effect.runPromise(
+        Effect.either(
+          withRetry(
+            sendRequest<T>(ctx, req),
+            exponentialRetry({
+              maxAttempts: 2,
+              initialDelayMs: this.retryDelayMs,
+              maxDelayMs: this.retryDelayMs,
+              factor: 1,
+              jitter: false,
+              shouldRetry: shouldRetryLibreNmsRequest,
+            }),
+          ),
         ),
-      ),
-    );
+      );
+    } catch (error) {
+      throw new LibreNmsUnreachableError(boundaryErrorMessage(error));
+    }
     if (result._tag === "Right") {
       return result.right.body;
     }
@@ -129,6 +134,7 @@ export class LibreNmsClient {
 
 function shouldRetryLibreNmsRequest(error: OperatorError): boolean {
   if (error instanceof TransportError) return true;
+  if (error instanceof ParseError) return true;
   if (error instanceof UnexpectedStatusError) return error.status >= 500;
   return false;
 }
@@ -140,9 +146,12 @@ function mapLibreNmsRequestError(error: OperatorError): Error {
   }
   if (error instanceof TransportError) {
     const cause = error.cause;
-    return new LibreNmsUnreachableError(cause instanceof Error ? cause.message : String(cause));
+    return new LibreNmsUnreachableError(boundaryErrorMessage(cause));
   }
-  return new LibreNmsUnreachableError(error instanceof Error ? error.message : String(error));
+  if (error instanceof ParseError) {
+    return new LibreNmsUnreachableError(boundaryErrorMessage(error.cause ?? error.message));
+  }
+  return new LibreNmsUnreachableError(boundaryErrorMessage(error));
 }
 
 function responseErrorMessage(bodyText: string): string {

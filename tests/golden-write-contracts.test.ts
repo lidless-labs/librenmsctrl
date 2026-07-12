@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { withRedactedErrors } from "../index.ts";
+import { pluginErrorResult, withRedactedErrors } from "../index.ts";
+import { mcpErrorResult } from "../mcp-server.ts";
 import type { LibreNmsClient } from "../src/librenms-client.ts";
 import { WriteGateError } from "../src/gates.ts";
 import { createLibrenmsAckAlertTool } from "../src/tools/librenms_ack_alert.ts";
@@ -81,5 +82,20 @@ describe("golden confirm-gated destructive tool contracts", () => {
     expect(result).not.toHaveProperty("details");
     expect(getClient).not.toHaveBeenCalled();
     expectNoClientApiCalls(client);
+  });
+});
+
+describe("golden boundary error stringification contracts", () => {
+  it.each([
+    { name: "empty Error", thrown: new Error(""), message: "" },
+    { name: "non-Error number", thrown: 42, message: "42" },
+  ])("keeps pre-kit stringification for $name at MCP-shaped boundaries", ({ thrown, message }) => {
+    const expected = {
+      content: [{ type: "text", text: JSON.stringify({ error: message }) }],
+      isError: true,
+    };
+
+    expect(pluginErrorResult(thrown)).toEqual(expected);
+    expect(mcpErrorResult(thrown)).toEqual(expected);
   });
 });

@@ -1,8 +1,8 @@
 import { realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
-import { operatorErrorMessage } from "@lidless-labs/effect-operator-kit";
 import { resolveConfig } from "./config.ts";
 import { LibreNmsClient } from "./librenms-client.ts";
+import { boundaryErrorMessage } from "./error-message.ts";
 import { redact } from "./security.ts";
 import { ValidationError } from "./validate.ts";
 import { serve } from "../mcp-server.ts";
@@ -492,7 +492,7 @@ export async function run(argv: string[], deps: CliDeps): Promise<number> {
       deps.err(redact(error.message) as string);
       return 2;
     }
-    deps.err(redact(operatorErrorMessage(error)) as string);
+    deps.err(redact(boundaryErrorMessage(error)) as string);
     return 1;
   }
   return 0;
@@ -521,7 +521,7 @@ if (isEntrypoint) {
       process.exitCode = code;
     })
     .catch((error: unknown) => {
-      process.stderr.write(`${redact(operatorErrorMessage(error)) as string}\n`);
+      process.stderr.write(`${redact(boundaryErrorMessage(error)) as string}\n`);
       process.exitCode = 1;
     });
 }

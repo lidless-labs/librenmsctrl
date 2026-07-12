@@ -34,6 +34,35 @@ describe("LibreNmsClient", () => {
     expect(fake.requests).toHaveLength(2);
   });
 
+  it("retries malformed 2xx JSON once and surfaces the raw SyntaxError text", async () => {
+    const malformed = "not-json";
+    fake = await startFakeLibreNms([
+      { method: "GET", path: "/api/v0/system", status: 200, body: malformed },
+    ]);
+    const c = new LibreNmsClient({ url: fake.baseUrl, token: "t", tlsInsecure: false }, { retryDelayMs: 1 });
+    let syntaxMessage = "";
+    try {
+      JSON.parse(malformed);
+    } catch (error) {
+      syntaxMessage = (error as Error).message;
+    }
+
+    await expect(c.get("/system")).rejects.toThrow(`LibreNMS unreachable: ${syntaxMessage}`);
+    expect(fake.requests).toHaveLength(2);
+  });
+
+  it("maps synchronous request transform throws to LibreNMS unreachable errors", async () => {
+    const body: Record<string, unknown> = {};
+    body.self = body;
+    fake = await startFakeLibreNms([
+      { method: "POST", path: "/api/v0/system", status: 200, body: { status: "ok" } },
+    ]);
+    const c = new LibreNmsClient({ url: fake.baseUrl, token: "t", tlsInsecure: false }, { retryDelayMs: 1 });
+
+    await expect(c.post("/system", body)).rejects.toThrow(/^LibreNMS unreachable: Converting circular structure to JSON/);
+    expect(fake.requests).toHaveLength(0);
+  });
+
   it("does not include token in thrown error messages", async () => {
     fake = await startFakeLibreNms([
       { method: "GET", path: "/api/v0/system", status: 401, body: { status: "error", message: "unauthorized" } },
