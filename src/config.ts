@@ -1,3 +1,11 @@
+import { Effect } from "effect";
+import {
+  ConfigError as KitConfigError,
+  fromProcessEnv,
+  parseBooleanEnv,
+  type EnvReader,
+} from "@lidless-labs/effect-operator-kit";
+
 export interface LibreNmsConfig {
   url: string;
   token: string;
@@ -11,12 +19,34 @@ export class ConfigError extends Error {
   }
 }
 
-function isTruthy(value: string | undefined): boolean {
-  if (!value) return false;
-  return ["true", "1", "yes"].includes(value.toLowerCase());
+/**
+ * Bridge kit Effect config primitives to this repo's sync throw-on-error contract.
+ */
+function runConfigEffect<A>(effect: Effect.Effect<A, KitConfigError>): A {
+  const result = Effect.runSync(Effect.either(effect));
+  if (result._tag === "Left") {
+    throw new ConfigError(result.left.message);
+  }
+  return result.right;
+}
+
+/**
+ * Kit `parseBooleanEnv` trims values, accepts on/off, and throws on invalid tokens.
+ * LibreNMS env parsing silently coerces invalid values to false and only accepts
+ * true/1/yes without trimming.
+ */
+function parseTlsInsecure(env: EnvReader): boolean {
+  const raw = env.get("LIBRENMS_TLS_INSECURE");
+  if (!raw) return false;
+  if (["true", "1", "yes"].includes(raw.toLowerCase())) {
+    return runConfigEffect(parseBooleanEnv(env, "LIBRENMS_TLS_INSECURE", false));
+  }
+  return false;
 }
 
 export function resolveConfig(env: Record<string, string | undefined>): LibreNmsConfig {
+  const reader = fromProcessEnv(env as NodeJS.ProcessEnv);
+
   const url = env.LIBRENMS_URL;
   const token = env.LIBRENMS_TOKEN;
   if (!url) throw new ConfigError("LIBRENMS_URL is required");
@@ -24,6 +54,6 @@ export function resolveConfig(env: Record<string, string | undefined>): LibreNms
   return {
     url: url.replace(/\/+$/, ""),
     token,
-    tlsInsecure: isTruthy(env.LIBRENMS_TLS_INSECURE),
+    tlsInsecure: parseTlsInsecure(reader),
   };
 }
