@@ -1,10 +1,48 @@
+import { ok } from "@lidless-labs/effect-operator-kit";
 import type { LibreNmsClient } from "../librenms-client.ts";
 
 export type ClientFactory = () => LibreNmsClient;
 
+/**
+ * Success tool result. Delegates serialization to kit `ok`.
+ *
+ * Semantic wrap: kit always attaches `details`; LibreNMS golden contracts
+ * require content-only success (no `details`, no `isError`). Content text is
+ * identical (pretty JSON via JSON.stringify(..., null, 2)).
+ */
 export function jsonToolResult(payload: unknown) {
+  const r = ok(payload);
+  return { content: r.content };
+}
+
+/**
+ * Error tool result matching repo contracts used by MCP boundaries / golden-write.
+ */
+export function toolFail(message: string) {
   return {
-    content: [{ type: "text" as const, text: JSON.stringify(payload, null, 2) }],
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify({ error: message }),
+      },
+    ],
+    isError: true as const,
+  };
+}
+
+/**
+ * Write-gate refusal as an MCP error envelope.
+ */
+export function toolRefuseUnconfirmed(toolName: string) {
+  const message = `${toolName} is a write operation. Pass {"confirm": true} to proceed.`;
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify({ error: message }),
+      },
+    ],
+    isError: true as const,
   };
 }
 

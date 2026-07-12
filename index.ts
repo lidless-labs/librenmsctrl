@@ -7,6 +7,7 @@
 import { definePluginEntry, type AnyAgentTool } from "openclaw/plugin-sdk/plugin-entry";
 import type { TSchema } from "@sinclair/typebox";
 import { resolveConfig, type LibreNmsConfig } from "./src/config.ts";
+import { boundaryErrorMessage } from "./src/error-message.ts";
 import { LibreNmsClient } from "./src/librenms-client.ts";
 import { registerSecret, redact } from "./src/security.ts";
 import { validateToolArgs } from "./src/validate.ts";
@@ -27,11 +28,15 @@ export function withRedactedErrors<T extends ToolLike>(tool: T): T {
         validateToolArgs(tool.parameters as TSchema, tool.name, args ?? {});
         return await orig(id, args);
       } catch (e) {
-        const msg = redact((e as Error).message) as string;
-        return { content: [{ type: "text", text: JSON.stringify({ error: msg }) }], isError: true };
+        return pluginErrorResult(e);
       }
     },
   };
+}
+
+export function pluginErrorResult(error: unknown) {
+  const msg = redact(boundaryErrorMessage(error)) as string;
+  return { content: [{ type: "text" as const, text: JSON.stringify({ error: msg }) }], isError: true as const };
 }
 
 function makeFactory(cfg: LibreNmsConfig) {

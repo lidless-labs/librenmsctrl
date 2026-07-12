@@ -185,6 +185,21 @@ describe("run", () => {
     expect(err.join("\n")).toContain("unreachable");
   });
 
+  it("stringifies degenerate thrown values with the pre-kit boundary rules", async () => {
+    const cases: Array<{ thrown: unknown; stderr: string }> = [
+      { thrown: new Error(""), stderr: "" },
+      { thrown: 42, stderr: "42" },
+    ];
+
+    for (const { thrown, stderr } of cases) {
+      const client = { get: vi.fn().mockRejectedValue(thrown) };
+      const captured = capture(client);
+
+      expect(await run(["devices", "list"], captured.deps)).toBe(1);
+      expect(captured.err).toEqual([stderr]);
+    }
+  });
+
   it("returns exit 2 and prints help on usage error", async () => {
     const { err, deps } = capture({});
     expect(await run(["bogus"], deps)).toBe(2);

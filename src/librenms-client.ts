@@ -1,4 +1,19 @@
+import { Effect } from "effect";
 import { Agent as UndiciAgent } from "undici";
+import {
+  exponentialRetry,
+  ParseError,
+  sendRequest,
+  TransportError,
+  UnexpectedStatusError,
+  withRetry,
+  type AuthStrategy,
+  type HttpContext,
+  type HttpMethod,
+  type HttpRequest,
+  type OperatorError,
+} from "@lidless-labs/effect-operator-kit";
+import { boundaryErrorMessage } from "./error-message.ts";
 
 export interface LibreNmsClientOptions {
   retryDelayMs?: number;
@@ -54,42 +69,95 @@ export class LibreNmsClient {
     return this.request<T>("DELETE", path);
   }
 
-  private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
-    const url = this.cfg.url + "/api/v0" + path;
-    const headers: Record<string, string> = { "x-auth-token": this.cfg.token };
-    let bodyStr: string | undefined;
-    if (body !== undefined) {
-      headers["content-type"] = "application/json";
-      bodyStr = JSON.stringify(body);
+  private async request<T>(method: HttpMethod, path: string, body?: unknown): Promise<T> {
+    const baseUrl = new URL(`${this.cfg.url}/`);
+    const requestPath = `api/v0${path}`;
+
+    const auth: AuthStrategy = {
+      apply: (headers) => {
+        headers.set("x-auth-token", this.cfg.token);
+        return Effect.succeed(headers);
+      },
+    };
+    const req: HttpRequest = {
+      method,
+      path: requestPath,
+      body,
+      bodyEncoding: body !== undefined ? "json" : "none",
+      statusMapper: ({ status, method: mappedMethod, path: mappedPath, bodyText, expectedStatuses }) =>
+        new UnexpectedStatusError({
+          method: mappedMethod,
+          path: mappedPath,
+          status,
+          body: bodyText,
+          expected: expectedStatuses,
+        }),
+    };
+    const ctx: HttpContext = {
+      baseUrl,
+      auth,
+      timeoutMs: 2_147_483_647,
+      fetch: this.fetchWithDispatcher,
+      redact: (value) => value,
+    };
+    let result: { _tag: "Left"; left: OperatorError } | { _tag: "Right"; right: { body: T } };
+    try {
+      result = await Effect.runPromise(
+        Effect.either(
+          withRetry(
+            sendRequest<T>(ctx, req),
+            exponentialRetry({
+              maxAttempts: 2,
+              initialDelayMs: this.retryDelayMs,
+              maxDelayMs: this.retryDelayMs,
+              factor: 1,
+              jitter: false,
+              shouldRetry: shouldRetryLibreNmsRequest,
+            }),
+          ),
+        ),
+      );
+    } catch (error) {
+      throw new LibreNmsUnreachableError(boundaryErrorMessage(error));
     }
-    let lastErr: unknown;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const init: Record<string, unknown> = { method, headers, body: bodyStr };
-        if (this.dispatcher) init.dispatcher = this.dispatcher;
-        const res = await fetch(url, init as RequestInit);
-        if (res.status >= 200 && res.status < 300) {
-          const text = await res.text();
-          if (!text) return undefined as T;
-          return JSON.parse(text) as T;
-        }
-        if (res.status >= 500) {
-          lastErr = new LibreNmsUnreachableError(`HTTP ${res.status}`);
-          if (attempt === 0) await sleep(this.retryDelayMs);
-          continue;
-        }
-        const errText = await res.text();
-        let msg = errText;
-        try { msg = (JSON.parse(errText) as { message?: string }).message ?? errText; } catch {}
-        throw new LibreNmsClientError(res.status, msg);
-      } catch (e) {
-        if (e instanceof LibreNmsClientError) throw e;
-        lastErr = new LibreNmsUnreachableError((e as Error).message);
-        if (attempt === 0) await sleep(this.retryDelayMs);
-      }
+    if (result._tag === "Right") {
+      return result.right.body;
     }
-    throw lastErr ?? new LibreNmsUnreachableError("unknown");
+    throw mapLibreNmsRequestError(result.left);
   }
+
+  private fetchWithDispatcher: typeof fetch = (input, init = {}) => {
+    if (!this.dispatcher) return fetch(input, init);
+    return fetch(input, { ...init, dispatcher: this.dispatcher } as RequestInit);
+  };
 }
 
-function sleep(ms: number) { return new Promise<void>((r) => setTimeout(r, ms)); }
+function shouldRetryLibreNmsRequest(error: OperatorError): boolean {
+  if (error instanceof TransportError) return true;
+  if (error instanceof ParseError) return true;
+  if (error instanceof UnexpectedStatusError) return error.status >= 500;
+  return false;
+}
+
+function mapLibreNmsRequestError(error: OperatorError): Error {
+  if (error instanceof UnexpectedStatusError) {
+    if (error.status >= 500) return new LibreNmsUnreachableError(`HTTP ${error.status}`);
+    return new LibreNmsClientError(error.status, responseErrorMessage(error.body));
+  }
+  if (error instanceof TransportError) {
+    const cause = error.cause;
+    return new LibreNmsUnreachableError(boundaryErrorMessage(cause));
+  }
+  if (error instanceof ParseError) {
+    return new LibreNmsUnreachableError(boundaryErrorMessage(error.cause ?? error.message));
+  }
+  return new LibreNmsUnreachableError(boundaryErrorMessage(error));
+}
+
+function responseErrorMessage(bodyText: string): string {
+  try {
+    return (JSON.parse(bodyText) as { message?: string }).message ?? bodyText;
+  } catch {
+    return bodyText;
+  }
+}
