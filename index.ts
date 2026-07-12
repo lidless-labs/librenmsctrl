@@ -6,6 +6,7 @@
 // `unknown` to bridge the intentional structural mismatch.
 import { definePluginEntry, type AnyAgentTool } from "openclaw/plugin-sdk/plugin-entry";
 import type { TSchema } from "@sinclair/typebox";
+import { operatorErrorMessage } from "@lidless-labs/effect-operator-kit";
 import { resolveConfig, type LibreNmsConfig } from "./src/config.ts";
 import { LibreNmsClient } from "./src/librenms-client.ts";
 import { registerSecret, redact } from "./src/security.ts";
@@ -27,7 +28,8 @@ export function withRedactedErrors<T extends ToolLike>(tool: T): T {
         validateToolArgs(tool.parameters as TSchema, tool.name, args ?? {});
         return await orig(id, args);
       } catch (e) {
-        const msg = redact((e as Error).message) as string;
+        // Kit mcp adapter message extraction with repo-owned redact (not kit defaultRedact).
+        const msg = redact(operatorErrorMessage(e)) as string;
         return { content: [{ type: "text", text: JSON.stringify({ error: msg }) }], isError: true };
       }
     },
