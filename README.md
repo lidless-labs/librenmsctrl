@@ -2,6 +2,10 @@
   <img src="docs/assets/librenmsctrl-social-preview.jpg" alt="librenmsctrl banner" width="900">
 </p>
 
+<p align="center">
+  <a href="https://lidless.dev"><img src="docs/assets/marks/librenmsctrl-circle.png" width="48" alt="Lidless Labs"></a>
+</p>
+
 <h1 align="center">librenmsctrl</h1>
 
 <p align="center">
@@ -239,3 +243,11 @@ Patches welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for what lands easily, [
 ## License
 
 [MIT](LICENSE).
+
+---
+
+<p align="center"><a href="https://lidless.dev">Part of <strong>Lidless Labs</strong></a> &middot; the eye does not close</p>
+
+<p align="center"><sub><strong>Network:</strong> <a href="https://github.com/lidless-labs/n8nctrl">n8nctrl</a> &middot; <a href="https://github.com/lidless-labs/watchtower">watchtower</a> &middot; <a href="https://github.com/lidless-labs/portgrid">portgrid</a> &middot; <a href="https://github.com/lidless-labs/cutsheet">cutsheet</a> &middot; <a href="https://github.com/lidless-labs/eero-cli">eero-cli</a></sub></p>
+
+<p align="center"><sub><a href="https://lidless.dev">All tools</a> &middot; <a href="https://github.com/lidless-labs">Lidless Labs on GitHub</a></sub></p>
