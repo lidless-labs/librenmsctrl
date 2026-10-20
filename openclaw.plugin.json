@@ -2,11 +2,19 @@
   "schemaVersion": 1,
   "id": "librenms",
   "name": "LibreNMS",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "description": "LibreNMS read + safe-write tools: devices, ports, alerts, ack, maintenance.",
   "entry": "./dist/index.js",
-  "activation": { "onStartup": true },
-  "compat": { "openclaw": ">=2026.4.22" },
+  "activation": {
+    "onStartup": true
+  },
+  "compat": {
+    "openclaw": ">=2026.4.22"
+  },
   "permissions": [],
-  "configSchema": { "type": "object", "properties": {}, "additionalProperties": false }
+  "configSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  }
 }
