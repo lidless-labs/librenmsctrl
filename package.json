@@ -68,7 +68,7 @@
     "vitest": "^4.1.5"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20.18.1"
   },
   "license": "MIT",
   "repository": {

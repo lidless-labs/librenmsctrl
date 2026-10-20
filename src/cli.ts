@@ -7,7 +7,7 @@ import { redact } from "./security.ts";
 import { ValidationError } from "./validate.ts";
 import { serve } from "../mcp-server.ts";
 
-export const VERSION = "0.2.0";
+export const VERSION = "0.2.2";
 
 export class UsageError extends Error {}
 
