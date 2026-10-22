@@ -1,25 +1,40 @@
-import { ok } from "@lidless-labs/effect-operator-kit";
+import { boundResult } from "@lidless-labs/effect-operator-kit";
 import type { LibreNmsClient } from "../librenms-client.ts";
 
 export type ClientFactory = () => LibreNmsClient;
 
+// A type alias, not an interface, so it stays assignable to the MCP SDK's open result type.
+export type ToolResultShape = {
+  content: Array<{ type: "text"; text: string }>;
+  structuredContent?: Record<string, unknown>;
+  isError?: boolean;
+};
+
 /**
- * Success tool result. Delegates serialization to kit `ok`.
- *
- * Semantic wrap: kit always attaches `details`; LibreNMS golden contracts
- * require content-only success (no `details`, no `isError`). Content text is
- * identical (pretty JSON via JSON.stringify(..., null, 2)).
+ * Apply the kit's UTF-8 byte cap to a hand-built result. An oversize result is cut
+ * with the kit's `[truncated: ...]` marker and gains `structuredContent:
+ * { truncated: true, ... }`; `isError` is kept.
  */
-export function jsonToolResult(payload: unknown) {
-  const r = ok(payload);
-  return { content: r.content };
+export function boundToolResult<T extends ToolResultShape>(result: T): T {
+  return boundResult<ToolResultShape>(result) as T;
+}
+
+/**
+ * Success tool result. Keeps the historical content-only shape (2-space JSON, no
+ * `details`, no `isError`, no `structuredContent`) that LibreNMS golden contracts
+ * require, under the kit's byte cap.
+ */
+export function jsonToolResult(payload: unknown): ToolResultShape {
+  return boundToolResult({
+    content: [{ type: "text" as const, text: JSON.stringify(payload, null, 2) ?? "null" }],
+  });
 }
 
 /**
  * Error tool result matching repo contracts used by MCP boundaries / golden-write.
  */
 export function toolFail(message: string) {
-  return {
+  return boundToolResult({
     content: [
       {
         type: "text" as const,
@@ -27,7 +42,7 @@ export function toolFail(message: string) {
       },
     ],
     isError: true as const,
-  };
+  });
 }
 
 /**
