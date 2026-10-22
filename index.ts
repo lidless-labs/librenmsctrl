@@ -12,6 +12,7 @@ import { LibreNmsClient } from "./src/librenms-client.ts";
 import { registerSecret, redact } from "./src/security.ts";
 import { validateToolArgs } from "./src/validate.ts";
 import * as tools from "./src/tools/index.ts";
+import { toolFail } from "./src/tools/_util.ts";
 
 interface ToolLike {
   name: string;
@@ -36,7 +37,7 @@ export function withRedactedErrors<T extends ToolLike>(tool: T): T {
 
 export function pluginErrorResult(error: unknown) {
   const msg = redact(boundaryErrorMessage(error)) as string;
-  return { content: [{ type: "text" as const, text: JSON.stringify({ error: msg }) }], isError: true as const };
+  return toolFail(msg);
 }
 
 function makeFactory(cfg: LibreNmsConfig) {
@@ -55,18 +56,6 @@ export default definePluginEntry({
     const getClient = makeFactory(cfg);
     const register = (t: ToolLike) =>
       api.registerTool(withRedactedErrors(t) as unknown as AnyAgentTool);
-    register(tools.createLibrenmsStatusTool(getClient));
-    register(tools.createLibrenmsListDevicesTool(getClient));
-    register(tools.createLibrenmsGetDeviceTool(getClient));
-    register(tools.createLibrenmsListPortsTool(getClient));
-    register(tools.createLibrenmsPortHealthTool(getClient));
-    register(tools.createLibrenmsListAlertsTool(getClient));
-    register(tools.createLibrenmsGetAlertTool(getClient));
-    register(tools.createLibrenmsAlertHistoryTool(getClient));
-    register(tools.createLibrenmsAckAlertTool(getClient));
-    register(tools.createLibrenmsSetMaintenanceTool(getClient));
-    register(tools.createLibrenmsGetPortTool(getClient));
-    register(tools.createLibrenmsEventLogTool(getClient));
-    register(tools.createLibrenmsUnmuteAlertTool(getClient));
+    for (const t of tools.buildAllTools(getClient)) register(t as unknown as ToolLike);
   },
 });

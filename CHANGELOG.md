@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Bumped `@lidless-labs/effect-operator-kit` to `1505318b2625fc273c51018389e2c61677e073d7`. Tool results, including error results, are now capped at 90,000 UTF-8 bytes. An oversize result is cut with a `[truncated: output was N bytes, limit is M bytes ...]` marker and carries `structuredContent: { truncated: true, ... }`. Results under the cap keep the existing content-only, 2-space JSON shape.
+- `tools/list` now carries tool annotations. The 10 reads declare `readOnlyHint: true`; the 3 confirm-gated writes (`librenms_ack_alert`, `librenms_set_maintenance`, `librenms_unmute_alert`) declare `destructiveHint: true`. `buildAllTools` throws at startup if a tool has no entry in `src/tools/annotations.ts`.
+- `mcp-server.ts` and the plugin entry now register from one `buildAllTools()` list.
+
 ## [0.2.2] - 2026-10-19
 
 ### Changed
