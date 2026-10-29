@@ -17,6 +17,7 @@ import {
 } from "@lidless-labs/effect-operator-kit";
 import { DEFAULT_REQUEST_TIMEOUT_MS } from "./config.ts";
 import { boundaryErrorMessage } from "./error-message.ts";
+import { registerSecret } from "./security.ts";
 
 export interface LibreNmsClientOptions {
   retryDelayMs?: number;
@@ -53,6 +54,7 @@ export class LibreNmsClient {
   dispatcher?: UndiciAgent;
 
   constructor(private cfg: ClientInstanceConfig, opts: LibreNmsClientOptions = {}) {
+    registerSecret(cfg.token);
     this.retryDelayMs = opts.retryDelayMs ?? 1000;
     this.fetchImpl = opts.fetch ?? fetch;
     if (cfg.tlsInsecure && cfg.url.startsWith("https://")) {
