@@ -63,23 +63,44 @@ describe("LibreNMS HTTP safety", () => {
     expect(requests).toBe(1);
   });
 
-  it.each(["post", "put", "delete"] as const)("never replays %s after an ambiguous failure", async (method) => {
-    for (const failure of ["status", "parse", "transport", "partial", "timeout"]) {
-      let writes = 0;
-      const url = await serve((req, res) => {
-        writes++;
-        if (failure === "transport") { req.socket.destroy(); return; }
-        if (failure === "status") { res.writeHead(503); res.end('{}'); return; }
-        if (failure === "parse") { res.end('invalid'); return; }
-        res.writeHead(200);
-        res.write('{');
-        if (failure === "partial") { setImmediate(() => res.destroy()); return; }
-        const timer = setTimeout(() => res.end('}'), 350);
-        res.on("close", () => clearTimeout(timer));
-      });
-      const c = client(url, 50);
-      await expect(c[method]("/alerts/42", { state: 2 })).rejects.toThrow(LibreNmsUnreachableError);
-      expect(writes, `${method} ${failure}`).toBe(1);
+  it.each(
+    (["post", "put", "delete"] as const).flatMap((method) =>
+      ["status", "parse", "transport", "partial", "timeout"].map((failure) => ({ method, failure })),
+    ),
+  )("never replays $method after $failure failure", async ({ method, failure }) => {
+    let writes = 0;
+    const url = await serve((req, res) => {
+      writes++;
+      if (failure === "transport") { req.socket.destroy(); return; }
+      if (failure === "status") { res.writeHead(503); res.end('{}'); return; }
+      if (failure === "parse") { res.end('invalid'); return; }
+      res.writeHead(200);
+      res.write('{');
+      if (failure === "partial") { setImmediate(() => res.destroy()); return; }
+      const timer = setTimeout(() => res.end('}'), 350);
+      res.on("close", () => clearTimeout(timer));
+    });
+    const c = client(url, 50);
+    await expect(c[method]("/alerts/42", { state: 2 })).rejects.toThrow(LibreNmsUnreachableError);
+    expect(writes).toBe(1);
+  });
+
+  it("preserves dispatcher, redirect policy, and abort signal at the fetch boundary", async () => {
+    let received: (RequestInit & { dispatcher?: unknown }) | undefined;
+    const c = new LibreNmsClient(
+      { url: "https://librenms.example", token: "t", tlsInsecure: true },
+      { fetch: async (_input, init) => {
+        received = init;
+        return new Response('{}');
+      } },
+    );
+    try {
+      await expect(c.get("/system")).resolves.toEqual({});
+      expect(received?.dispatcher).toBe(c.dispatcher);
+      expect(received?.signal).toBeInstanceOf(AbortSignal);
+      expect(received?.redirect).toBe("manual");
+    } finally {
+      await c.dispatcher?.close();
     }
   });
 
