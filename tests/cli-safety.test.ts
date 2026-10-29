@@ -72,4 +72,22 @@ describe("CLI external-data boundary", () => {
     expect(result.system.version).toBe("REDACTED");
     expect(result._external_data_notice).toContain("Untrusted LibreNMS");
   });
+  it("masks a credential reflected in an upstream JSON property name", async () => {
+    const token = "fixture-key-token";
+    const client = new LibreNmsClient({ url: "https://librenms.example.com", token, tlsInsecure: false }, {
+      fetch: vi.fn().mockResolvedValue(new Response(JSON.stringify({ system: [{ [token]: "fixture", version: "safe" }] }), { status: 200 })),
+    });
+    const captured = capture(client);
+    expect(await run(["status", "--json"], captured.deps)).toBe(0);
+    const result = JSON.parse(captured.out.join("\n"));
+    expect(result.system).toHaveProperty("REDACTED", "fixture");
+    expect(result.system).not.toHaveProperty(token);
+  });
+
+  it("reserves the final process newline within the 64 KiB limit", async () => {
+    const captured = capture({ get: vi.fn().mockResolvedValue({ logs: [{ message: "x".repeat(100_000) }] }) });
+    captured.deps.out = (text) => captured.out.push(text + "\n");
+    expect(await run(["events", "list"], captured.deps)).toBe(0);
+    expect(Buffer.byteLength(captured.out.join(""), "utf8")).toBeLessThanOrEqual(65_536);
+  });
 });
