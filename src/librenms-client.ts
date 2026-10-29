@@ -118,7 +118,9 @@ export class LibreNmsClient {
               maxDelayMs: this.retryDelayMs,
               factor: 1,
               jitter: false,
-              shouldRetry: shouldRetryLibreNmsRequest,
+              // No backend replay-safe idempotency contract exists for mutations.
+              shouldRetry: (error) =>
+                (method === "GET" || method === "HEAD") && shouldRetryLibreNmsRequest(error),
             }),
           ),
         ),
