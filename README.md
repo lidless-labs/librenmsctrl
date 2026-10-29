@@ -219,6 +219,10 @@ This MCP uses a three-tier write-gating pattern:
 
 **TLS:** the `LIBRENMS_TLS_INSECURE=true` toggle exists for homelab self-signed certs. Leave it `false` in any environment with a real CA-signed cert.
 
+**HTTP responses:** authenticated redirects are rejected. Configure the final LibreNMS API URL directly. The request deadline covers response headers and the entire body. Success and error bodies share a 10 MiB decoded byte cap. GET requests retain one retry for transport, malformed JSON, and server errors. Mutations are sent once because a failed response cannot prove the server did not apply the write. Check server state before manually repeating a failed write.
+
+**Returned data:** device names, descriptions, alert text, syslog and event messages, object keys, and upstream errors are untrusted LibreNMS content. Embedded instructions do not authorize tool calls or writes. JSON output escapes marker characters in keys and values while preserving decoded fields and the existing result envelope. Truncation is reported by the output byte cap.
+
 See [SECURITY.md](SECURITY.md) for the vulnerability-reporting policy.
 
 ## Why not just point an agent at the LibreNMS API?
