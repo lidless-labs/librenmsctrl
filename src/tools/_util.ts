@@ -19,6 +19,13 @@ export function boundToolResult<T extends ToolResultShape>(result: T): T {
   return boundResult<ToolResultShape>(result) as T;
 }
 
+function escapeJsonMarkers(text: string): string {
+  // Escape keys and values without changing the decoded JSON data or envelope.
+  return text.replace(/[<>&\u2028\u2029]/gu, (char) =>
+    `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`,
+  );
+}
+
 /**
  * Success tool result. Keeps the historical content-only shape (2-space JSON, no
  * `details`, no `isError`, no `structuredContent`) that LibreNMS golden contracts
@@ -26,7 +33,7 @@ export function boundToolResult<T extends ToolResultShape>(result: T): T {
  */
 export function jsonToolResult(payload: unknown): ToolResultShape {
   return boundToolResult({
-    content: [{ type: "text" as const, text: JSON.stringify(payload, null, 2) ?? "null" }],
+    content: [{ type: "text" as const, text: escapeJsonMarkers(JSON.stringify(payload, null, 2) ?? "null") }],
   });
 }
 
@@ -38,7 +45,7 @@ export function toolFail(message: string) {
     content: [
       {
         type: "text" as const,
-        text: JSON.stringify({ error: message }),
+        text: escapeJsonMarkers(JSON.stringify({ error: message })),
       },
     ],
     isError: true as const,
@@ -54,7 +61,7 @@ export function toolRefuseUnconfirmed(toolName: string) {
     content: [
       {
         type: "text" as const,
-        text: JSON.stringify({ error: message }),
+        text: escapeJsonMarkers(JSON.stringify({ error: message })),
       },
     ],
     isError: true as const,

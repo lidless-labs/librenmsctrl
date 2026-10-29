@@ -3,6 +3,7 @@ import { Agent as UndiciAgent } from "undici";
 import {
   exponentialRetry,
   ParseError,
+  ResponseTooLargeError,
   sendRequest,
   TimeoutError,
   TransportError,
@@ -16,6 +17,7 @@ import {
 } from "@lidless-labs/effect-operator-kit";
 import { DEFAULT_REQUEST_TIMEOUT_MS } from "./config.ts";
 import { boundaryErrorMessage } from "./error-message.ts";
+import { registerSecret } from "./security.ts";
 
 export interface LibreNmsClientOptions {
   retryDelayMs?: number;
@@ -52,6 +54,7 @@ export class LibreNmsClient {
   dispatcher?: UndiciAgent;
 
   constructor(private cfg: ClientInstanceConfig, opts: LibreNmsClientOptions = {}) {
+    registerSecret(cfg.token);
     this.retryDelayMs = opts.retryDelayMs ?? 1000;
     this.fetchImpl = opts.fetch ?? fetch;
     if (cfg.tlsInsecure && cfg.url.startsWith("https://")) {
@@ -118,7 +121,9 @@ export class LibreNmsClient {
               maxDelayMs: this.retryDelayMs,
               factor: 1,
               jitter: false,
-              shouldRetry: shouldRetryLibreNmsRequest,
+              // No backend replay-safe idempotency contract exists for mutations.
+              shouldRetry: (error) =>
+                (method === "GET" || method === "HEAD") && shouldRetryLibreNmsRequest(error),
             }),
           ),
         ),
@@ -149,6 +154,9 @@ function mapLibreNmsRequestError(error: OperatorError): Error {
   if (error instanceof UnexpectedStatusError) {
     if (error.status >= 500) return new LibreNmsUnreachableError(`HTTP ${error.status}`);
     return new LibreNmsClientError(error.status, responseErrorMessage(error.body));
+  }
+  if (error instanceof ResponseTooLargeError) {
+    return new LibreNmsUnreachableError(`response exceeded ${error.maxResponseBytes} bytes`);
   }
   if (error instanceof TimeoutError) {
     return new LibreNmsUnreachableError(
