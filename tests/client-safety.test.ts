@@ -21,6 +21,48 @@ function client(url: string, timeout = 1000) {
 }
 
 describe("LibreNMS HTTP safety", () => {
+  it.each([301, 302, 303, 307, 308])("rejects %i redirects without forwarding custom auth", async (status) => {
+    const received: string[] = [];
+    const destination = await serve((req, res) => {
+      received.push(String(req.headers["x-auth-token"]));
+      res.end('{}');
+    });
+    let sourceRequests = 0;
+    const source = await serve((_req, res) => {
+      sourceRequests++;
+      res.writeHead(status, { location: destination });
+      res.end();
+    });
+    await expect(client(source).get("/system")).rejects.toThrow(LibreNmsUnreachableError);
+    expect(received).toEqual([]);
+    expect(sourceRequests).toBe(1);
+  });
+
+  it.each(["stalled", "partial"])("keeps deadline active through a %s body", async (mode) => {
+    const url = await serve((_req, res) => {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.flushHeaders();
+      if (mode === "partial") res.write('{"devices":[');
+      const timer = setTimeout(() => res.end(mode === "partial" ? ']}' : '{}'), 350);
+      res.on("close", () => clearTimeout(timer));
+    });
+    const started = Date.now();
+    await expect(client(url, 50).get("/devices")).rejects.toThrow(/timed out after 50ms/);
+    expect(Date.now() - started).toBeLessThan(300);
+  });
+
+  it.each([200, 503])("bounds a streamed %i response before parsing or retrying", async (status) => {
+    let requests = 0;
+    const url = await serve((_req, res) => {
+      requests++;
+      res.writeHead(status, { "content-type": "application/json" });
+      res.write('"');
+      res.end('x'.repeat(10 * 1024 * 1024) + '"');
+    });
+    await expect(client(url).get("/devices")).rejects.toThrow(/response exceeded 10485760 bytes/);
+    expect(requests).toBe(1);
+  });
+
   it.each(["post", "put", "delete"] as const)("never replays %s after an ambiguous failure", async (method) => {
     for (const failure of ["status", "parse", "transport", "partial", "timeout"]) {
       let writes = 0;

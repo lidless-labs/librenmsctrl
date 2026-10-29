@@ -3,6 +3,7 @@ import { Agent as UndiciAgent } from "undici";
 import {
   exponentialRetry,
   ParseError,
+  ResponseTooLargeError,
   sendRequest,
   TimeoutError,
   TransportError,
@@ -151,6 +152,9 @@ function mapLibreNmsRequestError(error: OperatorError): Error {
   if (error instanceof UnexpectedStatusError) {
     if (error.status >= 500) return new LibreNmsUnreachableError(`HTTP ${error.status}`);
     return new LibreNmsClientError(error.status, responseErrorMessage(error.body));
+  }
+  if (error instanceof ResponseTooLargeError) {
+    return new LibreNmsUnreachableError(`response exceeded ${error.maxResponseBytes} bytes`);
   }
   if (error instanceof TimeoutError) {
     return new LibreNmsUnreachableError(
